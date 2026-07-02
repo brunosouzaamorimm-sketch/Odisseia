@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODISSEIA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #000814; color: #ccd6ff; min-height: 100vh; }
+        #stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        header { text-align: center; padding: 60px 20px; background: linear-gradient(135deg, #001233, #0b3d91); }
+        .title { font-size: 5em; color: #a0c4ff; text-shadow: 0 0 30px #4d9fff; letter-spacing: 12px; }
+        .subtitle { font-size: 1.6em; color: #b0d4ff; margin-top: 10px; }
+        nav { text-align: center; padding: 15px; background: rgba(10,20,50,0.95); }
+        button { background: #4d9fff; color: white; border: none; padding: 12px 28px; margin: 8px; border-radius: 50px; cursor: pointer; }
+        button:hover { background: #6eb5ff; transform: scale(1.05); }
+        .search-bar { text-align: center; padding: 20px; }
+        #search { width: 60%; max-width: 600px; padding: 14px; border-radius: 50px; border: 2px solid #4d9fff; background: #001233; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 30px; }
+        .titulo-card {
+            background: rgba(20,30,70,0.9);
+            border: 1px solid #4d9fff;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: 0.3s;
+            position: relative;
+        }
+        .titulo-card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(77,159,255,0.5); }
+        .capa { width: 100%; height: 320px; object-fit: cover; border-bottom: 2px solid #4d9fff; }
+        .info { padding: 12px; text-align: center; }
+        .btn-remover {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="stars"></div>
+
+    <header>
+        <h1 class="title">ODISSEIA</h1>
+        <p class="subtitle">Sua Biblioteca Cósmica</p>
+    </header>
+
+    <nav>
+        <button onclick="mudarCategoria('filmes')">Filmes</button>
+        <button onclick="mudarCategoria('series')">Séries</button>
+        <button onclick="mudarCategoria('animes')">Animes</button>
+        <button onclick="mudarCategoria('doramas')">Doramas</button>
+    </nav>
+
+    <div class="search-bar">
+        <input type="text" id="search" placeholder="Buscar título..." onkeyup="buscar()">
+    </div>
+
+    <main>
+        <section style="text-align:center; padding:25px; background:rgba(10,20,60,0.7);">
+            <h2>Adicionar Novo Título</h2>
+            <select id="categoria">
+                <option value="filmes">Filme</option>
+                <option value="series">Série</option>
+                <option value="animes">Anime</option>
+                <option value="doramas">Dorama</option>
+            </select><br><br>
+            <input type="text" id="titulo" placeholder="Título" class="input"><br>
+            <input type="text" id="url" placeholder="URL do vídeo" class="input"><br>
+            <input type="text" id="capa" placeholder="URL da Capa (Poster)" class="input"><br>
+            <input type="text" id="ano" placeholder="Ano" class="input"><br>
+            <button onclick="adicionarTitulo()">Salvar</button>
+        </section>
+
+        <h2 id="titulo-categoria" style="text-align:center; margin:25px;">Filmes</h2>
+        <div id="lista-titulos" class="grid"></div>
+    </main>
+
+    <script>
+        let biblioteca = JSON.parse(localStorage.getItem('odisseiaBiblioteca')) || { filmes: [], series: [], animes: [], doramas: [] };
+        let categoriaAtual = 'filmes';
+
+        function criarEstrelas() {
+            const container = document.getElementById('stars');
+            const canvas = document.createElement('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            container.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            const stars = [];
+            class Star {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 2 + 0.5;
+                    this.speed = Math.random() * 0.8 + 0.3;
+                }
+                update() { this.y += this.speed; if (this.y > canvas.height) this.y = 0; }
+                draw() { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.x, this.y, this.size, this.size); }
+            }
+            for (let i = 0; i < 200; i++) stars.push(new Star());
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                stars.forEach(s => { s.update(); s.draw(); });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function adicionarTitulo() {
+            const titulo = document.getElementById('titulo').value.trim();
+            const url = document.getElementById('url').value.trim();
+            const capa = document.getElementById('capa').value.trim();
+            const ano = document.getElementById('ano').value.trim();
+            const cat = document.getElementById('categoria').value;
+
+            if (!titulo || !url) return alert("Título e URL são obrigatórios!");
+
+            biblioteca[cat].push({
+                id: Date.now(),
+                titulo: titulo,
+                url: url,
+                capa: capa || "https://via.placeholder.com/300x420/001233/4d9fff?text=Sem+Capa",
+                ano: ano || new Date().getFullYear()
+            });
+
+            localStorage.setItem('odisseiaBiblioteca', JSON.stringify(biblioteca));
+            limparFormulario();
+            mostrarTitulos();
+            alert("✅ Salvo com sucesso!");
+        }
+
+        function limparFormulario() {
+            document.getElementById('titulo').value = '';
+            document.getElementById('url').value = '';
+            document.getElementById('capa').value = '';
+            document.getElementById('ano').value = '';
+        }
+
+        function removerTitulo(id, categoria) {
+            if (confirm("Tem certeza que deseja remover este título?")) {
+                biblioteca[categoria] = biblioteca[categoria].filter(item => item.id !== id);
+                localStorage.setItem('odisseiaBiblioteca', JSON.stringify(biblioteca));
+                mostrarTitulos();
+            }
+        }
+
+        function mostrarTitulos() {
+            const container = document.getElementById('lista-titulos');
+            container.innerHTML = '';
+            const titulos = biblioteca[categoriaAtual];
+
+            if (titulos.length === 0) {
+                container.innerHTML = `<p style="grid-column:1/-1; text-align:center;">Nenhum título encontrado.</p>`;
+                return;
+            }
+
+            titulos.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'titulo-card';
+                card.innerHTML = `
+                    <button class="btn-remover" onclick="removerTitulo(${item.id}, '${categoriaAtual}')">✕</button>
+                    <img src="${item.capa}" class="capa" alt="${item.titulo}">
+                    <div class="info">
+                        <h3>${item.titulo}</h3>
+                        <p>${item.ano}</p>
+                        <a href="${item.url}" target="_blank"><button style="width:90%; margin:8px 0;">▶ Assistir</button></a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function mudarCategoria(cat) {
+            categoriaAtual = cat;
+            document.getElementById('titulo-categoria').textContent = 
+                cat === 'filmes' ? 'Filmes' : cat === 'series' ? 'Séries' : cat === 'animes' ? 'Animes' : 'Doramas';
+            mostrarTitulos();
+        }
+
+        function buscar() {
+            const termo = document.getElementById('search').value.toLowerCase();
+            const container = document.getElementById('lista-titulos');
+            container.innerHTML = '';
+            const titulos = biblioteca[categoriaAtual].filter(item => 
+                item.titulo.toLowerCase().includes(termo)
+            );
+            if (titulos.length === 0) {
+                container.innerHTML = `<p style="grid-column:1/-1; text-align:center;">Nenhum resultado.</p>`;
+                return;
+            }
+            titulos.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'titulo-card';
+                card.innerHTML = `
+                    <button class="btn-remover" onclick="removerTitulo(${item.id}, '${categoriaAtual}')">✕</button>
+                    <img src="${item.capa}" class="capa" alt="${item.titulo}">
+                    <div class="info">
+                        <h3>${item.titulo}</h3>
+                        <p>${item.ano}</p>
+                        <a href="${item.url}" target="_blank"><button style="width:90%; margin:8px 0;">▶ Assistir</button></a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        criarEstrelas();
+        mostrarTitulos();
+    </script>
+</body>
+</html>
